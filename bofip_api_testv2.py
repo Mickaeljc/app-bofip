@@ -5,17 +5,25 @@ from transformers import pipeline
 import streamlit as st
 
 # === Étape 1 : Récupérer les données via l'API BOFIP ===
-def fetch_bofip_data(api_url, filters):
-    try:
+def fetch_all_bofip_data(api_url, filters):
+    all_data = []
+    offset = 0
+    limit = 50
+    while True:
+        filters["offset"] = offset
+        filters["limit"] = limit
         response = requests.get(api_url, params=filters)
         if response.status_code == 200:
-            return response.json()
+            data = response.json()
+            results = data.get("results", [])
+            if not results:
+                break
+            all_data.extend(results)
+            offset += limit
         else:
             print(f"Erreur {response.status_code}: Impossible de récupérer les données.")
-            return None
-    except requests.exceptions.RequestException as e:
-        print(f"Erreur de connexion : {e}")
-        return None
+            break
+    return {"results": all_data}
 
 def save_data_locally(data, filename="bofip_data.json"):
     with open(filename, "w", encoding="utf-8") as f:
@@ -35,6 +43,8 @@ def prepare_knowledge_base(data):
         title = fields.get("dc_title", "Titre inconnu")
         description = fields.get("dc_description", "Description indisponible")
         subject = fields.get("dc_subject", "Sujet inconnu")
+
+        print(f"Titre: {title}, Sujet: {subject}")  # Débogage
 
         if any(keyword in subject for keyword in ["TVA", "Agriculture", "Impôts"]):
             content = f"Titre: {title}\nDescription: {description}\nSujet: {subject}"
@@ -74,7 +84,7 @@ def main():
 
     if not os.path.exists("bofip_data.json"):
         st.write("Chargement des données BOFIP via l'API...")
-        data = fetch_bofip_data(api_url, filters)
+        data = fetch_all_bofip_data(api_url, filters)
         if data:
             save_data_locally(data)
         else:
