@@ -1,20 +1,16 @@
-import requests
+iimport requests
 import json
 import os
 from transformers import pipeline
 import streamlit as st
 
 # === Étape 1 : Récupérer les données via l'API BOFIP ===
-def fetch_bofip_data(api_url, limit=20, offset=0):
+def fetch_bofip_data(api_url, filters):
     """
-    Récupère les données BOFIP via l'API.
+    Récupère les données BOFIP via l'API avec des filtres spécifiques.
     """
-    params = {
-        "limit": limit,
-        "offset": offset
-    }
     try:
-        response = requests.get(api_url, params=params)
+        response = requests.get(api_url, params=filters)
         if response.status_code == 200:
             return response.json()
         else:
@@ -50,8 +46,12 @@ def prepare_knowledge_base(data):
         fields = record.get("fields", {})
         title = fields.get("dc_title", "Titre inconnu")
         description = fields.get("dc_description", "Description indisponible")
-        content = f"Titre: {title}\nDescription: {description}"
-        knowledge_base.append({"title": title, "content": content})
+        subject = fields.get("dc_subject", "Sujet inconnu")
+
+        # Ajouter uniquement les données pertinentes
+        if any(keyword in subject for keyword in ["TVA", "Agriculture", "Impôts"]):
+            content = f"Titre: {title}\nDescription: {description}\nSujet: {subject}"
+            knowledge_base.append({"title": title, "content": content})
     return knowledge_base
 
 # === Étape 3 : Utiliser un modèle de langage pour répondre aux questions ===
@@ -75,10 +75,18 @@ def main():
     # URL de l'API BOFIP
     api_url = "https://www.data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/bofip-impots/records"
 
+    # Définir les filtres pour cibler les données pertinentes
+    filters = {
+        "where": "dc_subject='TVA' OR dc_subject='Agriculture'",  # Filtrer par sujet pertinent
+        "select": "dc_title, dc_description, dc_subject",          # Sélectionner les champs pertinents
+        "limit": 50,                                               # Limiter le nombre de résultats
+        "lang": "fr"                                               # Spécifier la langue
+    }
+
     # Charger les données BOFIP (locale ou API)
     if not os.path.exists("bofip_data.json"):
         st.write("Chargement des données BOFIP via l'API...")
-        data = fetch_bofip_data(api_url, limit=20)
+        data = fetch_bofip_data(api_url, filters)
         if data:
             save_data_locally(data)
     else:
