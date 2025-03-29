@@ -1,4 +1,4 @@
-iimport requests
+import requests
 import json
 import os
 from transformers import pipeline
