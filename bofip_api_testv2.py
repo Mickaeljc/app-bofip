@@ -89,26 +89,25 @@ def main():
             save_data_locally(data)
         else:
             st.error("Impossible de charger les données BOFIP depuis l'API.")
-            return
     else:
         data = load_data_locally()
 
+    knowledge_base = []
     if data:
         knowledge_base = prepare_knowledge_base(data)
-        if not knowledge_base:
-            st.error("Aucune donnée pertinente trouvée dans la base de connaissances.")
-            return
 
-        question = st.text_input("Posez votre question ici :", "")
-        if question:
-            with st.spinner("Recherche de la réponse..."):
-                answer = answer_question(question, knowledge_base)
-                if "Veuillez poser une question valide" in answer or "Aucune donnée disponible" in answer:
-                    st.warning(answer)
-                else:
-                    st.success(f"Réponse : {answer}")
-    else:
-        st.error("Impossible de charger les données BOFIP.")
+    if not knowledge_base:
+        st.error("Aucune donnée pertinente trouvée dans la base de connaissances.")
+        st.warning("Vous pouvez toujours poser une question, mais la réponse risque d'être incomplète.")
+
+    question = st.text_input("Posez votre question ici :", "")
+    if question:
+        with st.spinner("Recherche de la réponse..."):
+            answer = answer_question(question, knowledge_base)
+            if "Veuillez poser une question valide" in answer or "Aucune donnée disponible" in answer:
+                st.warning(answer)
+            else:
+                st.success(f"Réponse : {answer}")
 
 if __name__ == "__main__":
     main()
